@@ -139,3 +139,30 @@ class BlueSky:
             post_rkey=post.tid,
         )
         return full_post
+    
+    def post_reply(
+        self,
+        reply_to: Post,
+        text: atproto.client_utils.TextBuilder | str,
+        embed: atproto.models.AppBskyEmbedImages.Main | None,
+    ) -> atproto.models.AppBskyFeedPost.CreateRecordResponse:
+        '''Post a reply.'''
+        old_post = self.client.app.bsky.feed.post.get(
+            repo=reply_to.did,
+            rkey=reply_to.tid,
+        )
+        root_post_ref = atproto.models.create_strong_ref(
+            model=old_post.value.reply.root,
+        )
+        reply_post_ref = atproto.models.create_strong_ref(
+            model=old_post,
+        )
+        post = self.client.send_post(
+            text=text,
+            embed=embed,
+            reply_to=atproto.models.AppBskyFeedPost.ReplyRef(
+                parent=reply_post_ref,
+                root=root_post_ref,
+            ),
+        )
+        return post
