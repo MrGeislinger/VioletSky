@@ -1,6 +1,8 @@
+import asyncio
 import atproto
 from dataclasses import dataclass
 import dotenv
+import httpx
 import os
 
 @dataclass
@@ -68,7 +70,6 @@ class BlueSky:
         tid = url_parts[4]
         return Post(did=did, tid=tid, url=url)
 
-
     def get_uri(
         self,
         user_did,
@@ -77,9 +78,31 @@ class BlueSky:
         '''Get at://... URI'''
         quote_post_uri = f'at://{user_did}/app.bsky.feed.post/{post_rkey}'
         return quote_post_uri
-        
 
-    # handle_response = client.resolve_handle(user_to_quote)
+    async def get_profile(
+        self,
+        user: str
+    ) -> dict | None:
+        url = (
+            'https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?'
+            f'actor={user}'
+        )
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(url)
+                # Raise an exception for bad status codes (4xx or 5xx)
+                response.raise_for_status()
+                return response.json()
+            except httpx.HTTPStatusError as exc:
+                print(f'HTTP Error: {exc}')
+                return None
+            except httpx.RequestError as exc:
+                print(f'Request Error: {exc}')
+                return None
+            except Exception as exc:  # Catch other potential exceptions
+                print(f'An unexpected error occurred: {exc}')
+                return None
+
     def get_post(
         self,
         post_url: str | None = None,
@@ -105,4 +128,4 @@ class BlueSky:
             post_rkey=post.tid,
         )
         return quoted_post
-        
+    
