@@ -39,6 +39,13 @@ class BlueSky:
             print(f'{username=}')
         self.client = atproto.Client()
     
+    def get_did_from_handle(
+        self,
+        user_handle: str,
+    ):
+        resp = self.client.resolve_handle(user_handle)
+        return resp.did
+
     def is_did(
         self,
         did_candidate: str,
@@ -66,7 +73,11 @@ class BlueSky:
             .split('/')
         )
         # TODO: check if did string
-        did = url_parts[2]
+        did_candidate: str = url_parts[2]
+        if self.is_did(did_candidate=did_candidate):
+            did = did_candidate
+        else:
+            did = self.get_did_from_handle(did_candidate)
         tid = url_parts[4]
         return Post(did=did, tid=tid, url=url)
 
@@ -123,9 +134,8 @@ class BlueSky:
             post = Post(did=user_did, tid=post_rkey)
 
         
-        quoted_post = self.client.get_post(
+        full_post = self.client.get_post(
             profile_identify=post.did,
             post_rkey=post.tid,
         )
-        return quoted_post
-    
+        return full_post

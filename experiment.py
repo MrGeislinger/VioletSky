@@ -1,5 +1,6 @@
 import asyncio
-from bluesky import BlueSky
+from bluesky import BlueSky, Post
+from datetime import datetime
 import streamlit as st
 
 st.title('Experiments')
@@ -27,10 +28,11 @@ async def draw_profile(
                 image=image_url,
                 width=80,
             )
+            st.write(r.get('description'))
 
 
 with st.form(key='display_post'):
-    post = st.text_input(
+    post_url = st.text_input(
         label='input_post',
         help='Enter a URL of a post '
     )
@@ -39,11 +41,17 @@ with st.form(key='display_post'):
     if submitted:
         my_sky = BlueSky()
         my_sky.login_client()
-        post = my_sky.get_post(post)
+        post_info: Post = my_sky.resolve_post(post_url)
+        # Use DID & TID directly since we possibly already queried them
+        post = my_sky.get_post(
+            user_did=post_info.did,
+            post_rkey=post_info.tid,
+        )
 
         st.write('### Post Details')
         # TODO: Get actual did from URI
-        did = 'did:plc:jfda6xfy4ncaf72omkvrbkko'
+        did = post_info.did
+        st.write(post_info)
     
 
         #
@@ -63,9 +71,18 @@ with st.form(key='display_post'):
             )
             with post_container:
                 st.markdown(
-                    '_:blue[POST:]_'
+                    f'[POST:]({post_url})'
                 )
-                st.write(post.value.created_at)
+                # Convert to readable time format
+                post_time: str = (
+                    datetime.fromisoformat(
+                        post.value.created_at
+                    )
+                    .strftime(
+                        '%a %d %b %Y - %H:%M:%S'
+                    )
+                )
+                st.write(post_time)
                 st.write(
                     f'{text}'
                 )
@@ -78,14 +95,24 @@ with st.form(key='display_post'):
                 else:
                     all_media = list()
 
-                for image_info in all_media:
+                image_columns = st.columns(
+                    len(all_media),
+                    vertical_alignment='top',
+                )
+                for col, image_info in zip(image_columns, all_media):
                     image_link = image_info.image.ref.link
                     image_url = (
-                        f'https://cdn.bsky.app/img/feed_thumbnail/plain/{did}/{image_link}@jpeg'
+                        'https://cdn.bsky.app/img/feed_thumbnail/plain/'
+                        f'{did}/{image_link}@jpeg'
                     )
-                    st.image(
+                    col.image(
                         image=image_url,
-                        width=200,
+                        width=300,
+                        use_container_width=(
+                            True if len(all_media) > 1
+                            else None
+                        ),
+                        
                         caption=image_info.alt,
                     )
 
