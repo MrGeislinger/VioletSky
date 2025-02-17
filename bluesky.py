@@ -21,7 +21,7 @@ class BlueSky:
         verbose: bool = False,
     ):
         self._verbose: bool = verbose
-        self.client: atproto.Client | None = None
+        self.client: atproto.Client = atproto.Client()
     
     @property
     def verbose(self):
@@ -29,7 +29,7 @@ class BlueSky:
 
     @verbose.setter
     def verbose(self, value):
-        self._verbose = value 
+        self._verbose = value
 
     def login_client(self):
         dotenv.load_dotenv('.env')
@@ -37,7 +37,7 @@ class BlueSky:
         password = os.getenv('BSKY_PASSWORD')
         if self.verbose:
             print(f'{username=}')
-        self.client = atproto.Client()
+        self.client.login(login=username, password=password)
     
     def get_did_from_handle(
         self,
@@ -166,3 +166,32 @@ class BlueSky:
             ),
         )
         return post
+    
+    def get_timeline(
+        self,
+        limit: int | None = 8,
+    ) -> list[tuple[str]]:
+
+
+        print('Home (Following):\n')
+
+        # Get "Home" page. Use pagination (cursor + limit) to fetch all posts
+        timeline = self.client.get_timeline(
+            limit=limit,
+            algorithm='reverse-chronological',
+        )
+        timeline_posts = []
+        for feed_view in timeline.feed:
+            action = 'New Post'
+            if feed_view.reason:
+                action_by = feed_view.reason.by.handle
+                action = f'Reposted by @{action_by}'
+
+            post = feed_view.post.record
+            author = feed_view.post.author
+
+            post_str = f'[{action}] {author.display_name}: {post.text}'
+            timeline_posts.append(
+                (feed_view.post, post_str)
+            )
+        return timeline_posts
