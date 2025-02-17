@@ -3,6 +3,19 @@ from bluesky import BlueSky, Post
 from datetime import datetime
 import streamlit as st
 
+st.set_page_config(
+    page_title="VioletSky",
+    page_icon="🦋",
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items=dict(
+        About=(
+            '# Bluesky Alternative UI by '
+            '[Victor](https://bsky.app/profile/did:plc:jfda6xfy4ncaf72omkvrbkko)'
+        ),
+    )
+)
+
 st.title('Experiments')
 
 # Save BlueSky object to keep logged in after form submit
