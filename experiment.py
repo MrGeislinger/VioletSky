@@ -58,7 +58,7 @@ def display_post(
         )
     with post_container:
         post_link = st.markdown(
-            f'[POST:]({post_url})'
+            f'[{post_url}]({post_url})'
         )
         # Convert to readable time format
         post_time: str = (
@@ -162,6 +162,7 @@ with st.form(key='display_post'):
             sky=my_sky,
             did=did,
             post_values=post.value,
+            post_url=post_info.url,
         )
         
 
