@@ -15,6 +15,7 @@ async def draw_profile(
     profile: st.delta_generator.DeltaGenerator,
     sky: BlueSky,
     did: str,
+    description: bool = True,
 ):
     r = await sky.get_profile(
         user=did,
@@ -31,7 +32,8 @@ async def draw_profile(
                 image=image_url,
                 width=80,
             )
-            st.write(r.get('description'))
+            if description:
+                st.write(r.get('description'))
 
 def display_post(
     sky: BlueSky,
@@ -45,7 +47,6 @@ def display_post(
         vertical_alignment='top',
         border=border,
     )
-
     if did:
         asyncio.run(
             draw_profile(
@@ -67,6 +68,38 @@ def display_post(
                 '%a %d %b %Y - %H:%M:%S'
             )
         )
+        # Display reply information if message was a reply
+        if hasattr(post_values, 'reply') and post_values.reply:
+            reply_url = sky.convert_at_to_url(post_values.reply.parent.uri)
+            reply_did, reply_tid = sky.get_did_tid_from_post(reply_url)
+            reply_post = my_sky.get_post(
+                user_did=reply_did,
+                post_rkey=reply_tid,
+            )
+            root_url = sky.convert_at_to_url(post_values.reply.root.uri)
+            with st.expander(label=f'Reply to {reply_url}'):
+                reply_profile_container, reply_container = st.columns(
+                    spec=[1,5],
+                    vertical_alignment='center'
+                )
+                reply_container.write(
+                    f'Reply to [message]({reply_url})'
+                    f' — [Root message]({root_url})'
+                )
+                asyncio.run(
+                    draw_profile(
+                        profile=reply_profile_container,
+                        sky=sky,
+                        did=reply_did,
+                        description=False,
+                    )
+                )
+                reply_container.code(
+                    reply_post.value.text,
+                    language=None,
+                    wrap_lines=True,
+                )
+                st.write('⋮')
         st.write(post_time)
         st.code(
             body=f'{post_values.text}',
@@ -152,17 +185,7 @@ with st.form(key='feed_display'):
                     st.write(f'Reposted by @{action_by}')
                 display_post(
                     sky=my_sky,
-                    post_url=(
-                        feed_view.post.uri  # at://DID/app.bsky.feed.post/TID"
-                        .replace(
-                            'at://',
-                            'https://bsky.app/profile/',
-                        )
-                        .replace(
-                            'app.bsky.feed.post',
-                            'post',
-                        )
-                    ),
+                    post_url=my_sky.convert_at_to_url(feed_view.post.uri),
                     did=feed_view.post.author.did,
                     post_values=feed_view.post.record,
                 )

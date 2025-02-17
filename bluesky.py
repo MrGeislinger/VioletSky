@@ -39,6 +39,24 @@ class BlueSky:
             print(f'{username=}')
         self.client.login(login=username, password=password)
     
+    def convert_at_to_url(
+        self,
+        at_uri: str,
+    ) -> str:
+        # at://DID/app.bsky.feed.post/TID"
+        url_str = (
+            at_uri
+            .replace(
+                'at://',
+                'https://bsky.app/profile/',
+            )
+            .replace(
+                'app.bsky.feed.post',
+                'post',
+            )
+        )
+        return url_str
+
     def get_did_from_handle(
         self,
         user_handle: str,
@@ -54,11 +72,11 @@ class BlueSky:
         # TODO: Actual validation
         return did_candidate[:3] == 'did'
 
-    def resolve_post(
+    def get_did_tid_from_post(
         self,
         url: str,
-    ) -> Post:
-        '''Get from URL 
+    ) -> tuple[str, str]:
+        '''Get from URL (https://)
 
         Returns:
           DID (repository)
@@ -66,19 +84,21 @@ class BlueSky:
         '''
         # Split up URL
         # https://bsky.app/profile/{USER}/post/{POST}
-        url_parts = (
-            url
-            .replace('https://', '')
-            .replace('http://', '')
-            .split('/')
-        )
-        # TODO: check if did string
-        did_candidate: str = url_parts[2]
+        url_parts = url.split('/')
+
+        did_candidate: str = url_parts[4]
         if self.is_did(did_candidate=did_candidate):
             did = did_candidate
         else:
             did = self.get_did_from_handle(did_candidate)
-        tid = url_parts[4]
+        tid = url_parts[6]
+        return (did, tid)
+        
+    def resolve_post(
+        self,
+        url: str,
+    ) -> Post:
+        did, tid = self.get_did_tid_from_post(url)
         return Post(did=did, tid=tid, url=url)
 
     def get_uri(
