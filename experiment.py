@@ -5,11 +5,12 @@ import streamlit as st
 
 st.title('Experiments')
 
-my_sky = BlueSky()
-my_sky.login_client()
+# Save BlueSky object to keep logged in after form submit
+my_sky = st.session_state.get('BlueSky', BlueSky())
+if st.session_state.get('BlueSky') is None:
+    st.session_state['BlueSky'] = my_sky
 
 st.subheader(f'Display post')
-
 
 async def draw_profile(
     profile: st.delta_generator.DeltaGenerator,
@@ -165,6 +166,24 @@ with st.form(key='display_post'):
         
 
 st.subheader(f'Feed Display')
+
+with st.form(key='login', clear_on_submit=True):
+    st.write(
+        'Login with username and password. '
+        'Recommended to use an [App Password](https://bsky.app/settings/app-passwords)'
+    )
+    username = st.text_input(
+        label='Bluesky Username',
+    )
+    password = st.text_input(
+        label='Bluesky or App Password',
+        type='password',
+    )
+    login = st.form_submit_button()
+
+    if login:
+        my_sky.login_client(username=username, password=password)
+
 
 with st.form(key='feed_display'):
     submitted = st.form_submit_button('Get Timeline')

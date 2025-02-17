@@ -31,10 +31,15 @@ class BlueSky:
     def verbose(self, value):
         self._verbose = value
 
-    def login_client(self):
-        dotenv.load_dotenv('.env')
-        username = os.getenv('BSKY_USERNAME')
-        password = os.getenv('BSKY_PASSWORD')
+    def login_client(
+        self,
+        username: str | None = None,
+        password: str | None = None,
+    ):
+        if username is None and password is None:
+            dotenv.load_dotenv('.env')
+            username = os.getenv('BSKY_USERNAME')
+            password = os.getenv('BSKY_PASSWORD')
         if self.verbose:
             print(f'{username=}')
         self.client.login(login=username, password=password)
