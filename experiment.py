@@ -1,6 +1,7 @@
 import asyncio
 from bluesky import BlueSky, Post
 from datetime import datetime
+import requests
 import streamlit as st
 
 st.set_page_config(
@@ -28,6 +29,13 @@ if st.session_state.get('BlueSky') is None:
     st.session_state['BlueSky'] = my_sky
 
 st.subheader(f'Display post')
+
+# https://docs.bsky.app/docs/api/com-atproto-sync-get-blob
+def get_blob(hostname, did, cid):
+    url = f"https://{hostname}/xrpc/com.atproto.sync.getBlob"
+    params = {"did": did, "cid": cid}
+    response = requests.get(url, params=params)
+    return response
 
 async def draw_profile(
     profile: st.delta_generator.DeltaGenerator,
@@ -127,34 +135,46 @@ def display_post(
             st.json(post_values, expanded=False)
 
         embed = post_values.embed
-        if hasattr(embed, 'media'):
-            embed = getattr(embed, 'media')
-        if hasattr(embed, 'images'):
-            all_media = getattr(embed, 'images')  # Get the 'embeds' attribute if 'images' doesn't exist, but 'embeds' does
-        else:
-            all_media = list()
+        if hasattr(embed, 'py_type'):
+            match embed.py_type:
+                case 'app.bsky.embed.images':
+                    all_images = getattr(embed, 'images')
+                    image_columns = st.columns(
+                        len(all_images),
+                        vertical_alignment='top',
+                    )
+                    for col, image_info in zip(image_columns, all_images):
+                        image_link = image_info.image.ref.link
+                        image_url = (
+                            'https://cdn.bsky.app/img/feed_thumbnail/plain/'
+                            f'{did}/{image_link}@jpeg'
+                        )
+                        col.image(
+                            image=image_url,
+                            width=300,
+                            use_container_width=(
+                                True if len(all_images) > 1
+                                else None
+                            ),
+                            
+                            caption=image_info.alt,
+                        )
+                case 'app.bsky.embed.video':
+                    if embed.video.py_type == 'blob':
+                        video_cid = embed.video.ref.link
+                        response = get_blob(
+                            hostname='bsky.social',  # Assume this
+                            did=did,
+                            cid=video_cid,
+                        )
+                        st.video(
+                            data=response.content,
+                            format=embed.video.mime_type,
+                            loop=True,
+                        )
+                        if hasattr(embed.video, 'alt'):
+                            st.caption(embed.video.alt)
 
-        if all_media:
-            image_columns = st.columns(
-                len(all_media),
-                vertical_alignment='top',
-            )
-            for col, image_info in zip(image_columns, all_media):
-                image_link = image_info.image.ref.link
-                image_url = (
-                    'https://cdn.bsky.app/img/feed_thumbnail/plain/'
-                    f'{did}/{image_link}@jpeg'
-                )
-                col.image(
-                    image=image_url,
-                    width=300,
-                    use_container_width=(
-                        True if len(all_media) > 1
-                        else None
-                    ),
-                    
-                    caption=image_info.alt,
-                )
 
 with st.form(key='display_post'):
     post_url = st.text_input(
