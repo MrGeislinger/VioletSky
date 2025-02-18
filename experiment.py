@@ -18,6 +18,10 @@ st.set_page_config(
 
 st.title('Experiments')
 
+developer_mode = st.checkbox(
+    label='DEVELOPER MODE',
+)
+
 # Save BlueSky object to keep logged in after form submit
 my_sky = st.session_state.get('BlueSky', BlueSky())
 if st.session_state.get('BlueSky') is None:
@@ -34,9 +38,7 @@ async def draw_profile(
     r = await sky.get_profile(
         user=did,
     )
-    # profile.write(r)
     if image_url := r.get('avatar'):
-        # container_avatar, container_name = profile.columns(2)
         with profile:
             profile_link = f'https://bsky.app/profile/{did}'
             st.write(
@@ -47,7 +49,8 @@ async def draw_profile(
                 width=80,
             )
             if description:
-                st.write(r.get('description'))
+                with st.expander(label='DESCRIPTION'):
+                    st.write(r.get('description'))
 
 def display_post(
     sky: BlueSky,
@@ -92,13 +95,13 @@ def display_post(
             )
             root_url = sky.convert_at_to_url(post_values.reply.root.uri)
             with st.expander(label=f'Reply to {reply_url}'):
+                st.write(
+                    f'Reply to [message]({reply_url})'
+                    f' — [Root message]({root_url})'
+                )
                 reply_profile_container, reply_container = st.columns(
                     spec=[1,5],
                     vertical_alignment='center'
-                )
-                reply_container.write(
-                    f'Reply to [message]({reply_url})'
-                    f' — [Root message]({root_url})'
                 )
                 asyncio.run(
                     draw_profile(
@@ -120,7 +123,8 @@ def display_post(
             language=None,
             wrap_lines=True,
         )
-        st.json(post_values, expanded=False)
+        if developer_mode:
+            st.json(post_values, expanded=False)
 
         embed = post_values.embed
         if hasattr(embed, 'media'):
@@ -209,11 +213,13 @@ with st.form(key='feed_display'):
         )
 
         for feed_view in feed.feed:
-            st.json(feed_view.post, expanded=False)
+            if developer_mode:
+                st.json(feed_view.post, expanded=False)
             
             with st.container(border=True):
                 if feed_view.reason:
-                    st.json(feed_view.reason, expanded=False)
+                    if developer_mode:
+                        st.json(feed_view.reason, expanded=False)
                     action_by = feed_view.reason.by.handle
                     st.write(f'Reposted by @{action_by}')
                 display_post(
